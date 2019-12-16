@@ -24,6 +24,7 @@
 #include <errno.h>
 #include <string.h>
 #include <fcntl.h>
+#include <sys/socket.h>
 
 static int pipes[2];
 static char datebuffer[ 128 ];
@@ -51,9 +52,22 @@ void setFiledescriptor( std::shared_ptr<DBus::FileDescriptor> desc ){
   write( desc->getDescriptor(), &toWrite, 1 );
 }
 
+static void msghdr_sizes(){
+    struct msghdr hdr = { 0 };
+    struct cmsghdr* cmsg = CMSG_FIRSTHDR(&hdr);
+
+    std::cout << "sizeof(cmsghdr->cmsg_len) is " << sizeof(cmsg->cmsg_len) << std::endl;
+    std::cout << "sizeof(cmsghdr->cmsg_level) is " << sizeof(cmsg->cmsg_level) << std::endl;
+    std::cout << "sizeof(cmsghdr->cmsg_type) is " << sizeof(cmsg->cmsg_type) << std::endl;
+    std::cout << "cmsg len is " << CMSG_LEN(sizeof(int)) << std::endl;
+    std::cout << "controllen is " << CMSG_SPACE(sizeof(int)) << std::endl;
+}
+
 int main( int argc, char** argv ){
   //uncomment the following line to enable logging from the library.
   //DBus::setLoggingFunction( mylog );
+
+  msghdr_sizes();
 
   DBus::init();
   std::shared_ptr<DBus::Dispatcher> dispatcher = DBus::Dispatcher::create();
@@ -69,5 +83,5 @@ int main( int argc, char** argv ){
       std::cout << "error: " << strerror(errno) << std::endl;
   }
 
-  std::cout << std::endl;
+  std::cout << "Done writing!" <<  std::endl;
 }
