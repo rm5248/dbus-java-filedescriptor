@@ -63,11 +63,47 @@ static void msghdr_sizes(){
     std::cout << "controllen is " << CMSG_SPACE(sizeof(int)) << std::endl;
 }
 
+#define NUM_FD 1
+static void msghdr_linux_manpage(){
+    struct msghdr msg = {0};
+    struct cmsghdr *cmsg;
+    int myfds[NUM_FD]; /* Contains the file descriptors to pass. */
+    char buf[CMSG_SPACE(sizeof myfds)];  /* ancillary data buffer */
+    int *fdptr;
+
+    myfds[0] = 4;
+
+    msg.msg_control = buf;
+    msg.msg_controllen = sizeof buf;
+    cmsg = CMSG_FIRSTHDR(&msg);
+    cmsg->cmsg_level = SOL_SOCKET;
+    cmsg->cmsg_type = SCM_RIGHTS;
+    cmsg->cmsg_len = CMSG_LEN(sizeof(int) * NUM_FD);
+    /* Initialize the payload: */
+    fdptr = (int *) CMSG_DATA(cmsg);
+    memcpy(fdptr, myfds, NUM_FD * sizeof(int));
+    /* Sum of the length of all control messages in the buffer: */
+    msg.msg_controllen = cmsg->cmsg_len;
+
+    std::cout << "sizeof size_t=" << sizeof(size_t) << std::endl;
+    std::cout << "msg_control={" << std::endl;
+    std::cout << "  cmsg {" << std::endl;
+    std::cout << "    cmsg_len=" << cmsg->cmsg_len << std::endl;
+    std::cout << "    cmsg_level=" << cmsg->cmsg_level << std::endl;
+    std::cout << "    cmsg_type=" << cmsg->cmsg_type << std::endl;
+    std::cout << "    cmsg_data=" << *fdptr << std::endl;
+    std::cout << "  }" << std::endl;
+    std::cout << "msg_controllen=" << msg.msg_controllen << std::endl;
+    std::cout << "CMSG_LEN(4)=" << CMSG_LEN(4) << std::endl;
+    std::cout << "CMSG_SPACE(4)=" << CMSG_SPACE(4) << std::endl;
+}
+
 int main( int argc, char** argv ){
   //uncomment the following line to enable logging from the library.
   //DBus::setLoggingFunction( mylog );
 
   msghdr_sizes();
+  msghdr_linux_manpage();
 
   DBus::init();
   std::shared_ptr<DBus::Dispatcher> dispatcher = DBus::Dispatcher::create();
@@ -79,7 +115,7 @@ int main( int argc, char** argv ){
   std::shared_ptr<DBus::FileDescriptor> desc = methodref();
   std::cout << "GOT FD " << desc->getDescriptor() << std::endl;
   int val = 55;
-  if( write( desc->getDescriptor() - 1, &val, 4 ) < 0 ){
+  if( write( desc->getDescriptor(), &val, 4 ) < 0 ){
       std::cout << "error: " << strerror(errno) << std::endl;
   }
 
